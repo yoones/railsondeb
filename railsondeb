@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Name		: railsondeb
+# Version	: 2.0
+# Author	: Younes SERRAJ
+# Description	: Install rbenv, ruby and rails on a debian distribution
+
+magictag="#railsondeb"
+ruby_version="1.9.3-p374"
+
+echo "** railsondeb: start **"
+pushd ~/ > /dev/null
+
+if [ -f ".railsondeb" ]; then
+    echo "* railsondeb seems to exist already."
+    read -p "! Delete current install (y/n)?" choice
+    if [ "$choice" != "y" ]; then
+	echo "** railsondeb: abort **"
+	exit 1
+    fi
+    rm -rf .rbenv
+    tmpfile=`mktemp | tr -d '\n'`
+    cat .profile | grep -v "$magictag" >> $tmpfile
+    mv $tmpfile .profile
+    rm -rf .railsondeb
+fi
+
+echo "* Install dependencies (sudo required)..."
+sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev
+
+touch .railsondeb
+
+echo "* Download rbenv..."
+git clone https://github.com/sstephenson/rbenv.git .rbenv
+
+echo "* Install rbenv..."
+echo "export PATH=\"\$HOME/.rbenv/bin:\$PATH\" $magictag" >> .profile
+echo "eval \"\$(rbenv init -)\" $magictag" >> .profile
+source .profile
+
+echo "* Download ruby-build..."
+git clone https://github.com/sstephenson/ruby-build.git .rbenv/plugins/ruby-build
+
+echo "* Install ruby $ruby_version..."
+rbenv install $ruby_version
+rbenv rehash
+echo "export RBENV_VERSION=\"$ruby_version\" $magictag" >> .profile
+source .profile
+
+echo "* Install bundler..."
+gem install bundler
+
+echo "* Install rails..."
+gem install rails
+
+rbenv rehash
+
+popd > /dev/null
+echo "** railsondeb: done. **"
