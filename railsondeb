@@ -1,21 +1,18 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 2.1
+# Version	: 2.2
 # Author	: Younes SERRAJ
 # Description	: Install rbenv, ruby and rails on a debian distribution
 
 # Changelog
+# 2.2	: Move to ruby 2.1.1, and skip gems doc while installing them
 # 2.1	: Works on both debian and ubuntu (use .profile for debian, .bash_profile for ubuntu)
 # 2.0	: Initial release
 
-echo "DEBUG: porta => WORK IN PROGRESS"
-exit 1
-
-
 magictag="#railsondeb"
-ruby_version="1.9.3-p374"
-profile=`(grep -i ubuntu /etc/issue > /dev/null 2> /dev/null && echo -n ".bash_profile") || echo -n ".profile"`
+ruby_version="2.1.1"
+profile=".bashrc"
 
 echo "** railsondeb: start **"
 pushd ~/ > /dev/null
@@ -28,6 +25,7 @@ if [ -f ".railsondeb" ]; then
 	exit 1
     fi
     rm -rf .rbenv
+    rm .gemrc
     tmpfile=`mktemp | tr -d '\n'`
     cat $profile | grep -v "$magictag" >> $tmpfile
     mv $tmpfile $profile
@@ -35,7 +33,7 @@ if [ -f ".railsondeb" ]; then
 fi
 
 echo "* Install dependencies (sudo required)..."
-sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev  libmagickcore-dev libmagickwand-dev
+sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev  libmagickcore-dev libmagickwand-dev imagemagick
 
 touch .railsondeb
 
@@ -51,10 +49,21 @@ echo "* Download ruby-build..."
 git clone https://github.com/sstephenson/ruby-build.git .rbenv/plugins/ruby-build
 
 echo "* Install ruby $ruby_version..."
-rbenv install $ruby_version
+if [ "$ruby_version" == "2.1.1" ]; then
+    echo "Patching ruby-2.1.1 using a cached version of https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt"
+    cat ruby-2.1.1.patch | rbenv install --patch 2.1.1
+else
+    rbenv install $ruby_version
+fi
+if [ "$?" != "0" ]; then
+    echo "Error: failed to install ruby $ruby_version"
+    exit 1
+fi
 rbenv rehash
 echo "export RBENV_VERSION=\"$ruby_version\" $magictag" >> $profile
 source $profile
+
+echo "gem: --no-document" >> .gemrc
 
 echo "* Install bundler..."
 gem install bundler
