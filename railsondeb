@@ -6,7 +6,7 @@
 # Description	: Install rbenv, ruby and rails on a debian-based distribution
 
 # Changelog
-# 2.3	: Uses bash, zsh and tcsh rc files if they exists
+# 2.3	: Uses bash, zsh and tcsh rc files if they exists, and cli options added.
 # 2.2	: Move to ruby 2.1.1, and skip gems doc while installing them
 # 2.1	: Works on both debian and ubuntu (use .profile for debian, .bash_profile for ubuntu)
 # 2.0	: Initial release on github using rbenv
