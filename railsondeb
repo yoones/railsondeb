@@ -1,19 +1,99 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 2.2
+# Version	: 2.3
 # Author	: Younes SERRAJ
-# Description	: Install rbenv, ruby and rails on a debian distribution
+# Description	: Install rbenv, ruby and rails on a debian-based distribution
 
 # Changelog
+# 2.3	: Uses bash, zsh and tcsh rc files if they exists
 # 2.2	: Move to ruby 2.1.1, and skip gems doc while installing them
 # 2.1	: Works on both debian and ubuntu (use .profile for debian, .bash_profile for ubuntu)
-# 2.0	: Initial release
+# 2.0	: Initial release on github using rbenv
+# 1.0	: Old version using rvm
 
+rod_version="railsondeb 2.3"
 magictag="#railsondeb"
 ruby_version="2.1.1"
-profile=".bashrc"
 
+function clean_rc_file()
+{
+    for rcfile in "$@"
+    do
+	if [ -f $rcfile ]; then
+	    tmpfile=`mktemp | tr -d '\n'`
+	    cat $rcfile | grep -v "$magictag" > $tmpfile
+	    mv $tmpfile $rcfile
+	fi
+    done
+}
+
+function add_rbenv_to_rc_file()
+{
+    for rcfile in "$@"
+    do
+	if [ -f $rcfile ]; then
+	    echo "export PATH=\"\$HOME/.rbenv/bin:\$PATH\" $magictag" >> $rcfile
+	    echo "eval \"\$(rbenv init -)\" $magictag" >> $rcfile
+	fi
+    done
+}
+
+function add_ruby_version_to_rc_file()
+{
+    for rcfile in "$@"
+    do
+	if [ -f $rcfile ]; then
+	    echo "export RBENV_VERSION=\"$ruby_version\" $magictag" >> $rcfile
+	fi
+    done
+}
+
+function print_help()
+{
+    echo "Usage: ./railsondeb [-h|-v|--reset-rc]"
+    echo -e "\t-h\t\t: print this help message"
+    echo -e "\t-v\t\t: print railsondeb version"
+    echo -e "\t--reset-rc\t: reset instructions put into bash, zsh and tcsh rc files"
+    echo ""
+    echo "You can get the latest version at https://github.com/yoones/railsondeb"
+}
+
+function reset_rc()
+{
+    pushd ~ > /dev/null
+    echo "* Reset rc files..."
+    if [ -f ".railsondeb" ]; then
+	clean_rc_file ".bashrc" ".zshrc" ".tcshrc"
+	add_rbenv_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+	add_ruby_version_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+	echo "done."
+    else
+	echo ".railsondeb not found, aborting."
+	exit 1
+    fi
+    popd > /dev/null
+}
+
+# Manage given options if any
+if [ "$#" == "1" ]; then
+    if [ "$1" == "-h" ]; then
+	print_help
+    elif [ "$1" == "-v" ]; then
+	echo $rod_version
+    elif [ "$1" == "--reset-rc" ]; then
+	reset_rc
+    else
+	echo "Error: unknown option"
+	exit 1
+    fi
+    exit 0
+elif [ "$#" != "0" ]; then
+    echo "Error: too many options."
+    exit 1
+fi
+
+# No argument given, start install
 echo "** railsondeb: start **"
 pushd ~/ > /dev/null
 
@@ -25,11 +105,9 @@ if [ -f ".railsondeb" ]; then
 	exit 1
     fi
     rm -rf .rbenv
-    rm .gemrc
-    tmpfile=`mktemp | tr -d '\n'`
-    cat $profile | grep -v "$magictag" >> $tmpfile
-    mv $tmpfile $profile
-    rm -rf .railsondeb
+    rm -f .gemrc
+    clean_rc_file ".bashrc" ".zshrc" ".tcshrc"
+    rm -f .railsondeb
 fi
 
 echo "* Install dependencies (sudo required)..."
@@ -41,17 +119,24 @@ echo "* Download rbenv..."
 git clone https://github.com/sstephenson/rbenv.git .rbenv
 
 echo "* Install rbenv..."
-echo "export PATH=\"\$HOME/.rbenv/bin:\$PATH\" $magictag" >> $profile
-echo "eval \"\$(rbenv init -)\" $magictag" >> $profile
-source $profile
+add_rbenv_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
 
 echo "* Download ruby-build..."
 git clone https://github.com/sstephenson/ruby-build.git .rbenv/plugins/ruby-build
 
 echo "* Install ruby $ruby_version..."
+popd > /dev/null
 if [ "$ruby_version" == "2.1.1" ]; then
-    echo "Patching ruby-2.1.1 using a cached version of https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt"
-    cat ruby-2.1.1.patch | rbenv install --patch 2.1.1
+    patch_file="ruby-2.1.1.patch"
+    echo "Patching ruby $ruby_version using a cached version of https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt"
+    if [ -f "$patch_file" ]; then
+	cat $patch_file | rbenv install --patch "$ruby_version"
+    else
+	echo "Error: $patch_file not found."
+	exit 1
+    fi
 else
     rbenv install $ruby_version
 fi
@@ -59,9 +144,10 @@ if [ "$?" != "0" ]; then
     echo "Error: failed to install ruby $ruby_version"
     exit 1
 fi
+pushd ~/ > /dev/null
 rbenv rehash
-echo "export RBENV_VERSION=\"$ruby_version\" $magictag" >> $profile
-source $profile
+add_ruby_version_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+export RBENV_VERSION="$ruby_version"
 
 echo "gem: --no-document" >> .gemrc
 
@@ -75,4 +161,4 @@ rbenv rehash
 
 popd > /dev/null
 echo "** railsondeb: done. **"
-echo "You can now reload ~/$profile :)"
+echo "You can now reload your shell rc file :)"
