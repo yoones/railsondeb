@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 2.3
+# Version	: 2.5
 # Author	: Younes SERRAJ
 # Description	: Install rbenv, ruby and rails on a debian-based distribution
 
 # Changelog
+# 2.5	: ruby 2.2.2. Disabled zshrc and tcshrc usage.
 # 2.4	: Removed tcsh rc file (unstable), moved to ruby 2.2.0, added nodejs dependency.
 # 2.3	: Uses bash, zsh and tcsh rc files if they exists, and cli options added.
 # 2.2	: Move to ruby 2.1.1, and skip gems doc while installing them
@@ -13,9 +14,9 @@
 # 2.0	: Initial release on github using rbenv
 # 1.0	: Old version using rvm
 
-rod_version="railsondeb 2.4"
+rod_version="railsondeb 2.5"
 magictag="#railsondeb"
-ruby_version="2.2.0"
+ruby_version="2.2.2"
 
 function clean_rc_file()
 {
@@ -65,9 +66,9 @@ function reset_rc()
     pushd ~ > /dev/null
     echo "* Reset rc files..."
     if [ -f ".railsondeb" ]; then
-	clean_rc_file ".bashrc" ".zshrc" ".tcshrc"
-	add_rbenv_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
-	add_ruby_version_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+	clean_rc_file ".bashrc" # ".zshrc" ".tcshrc"
+	add_rbenv_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
+	add_ruby_version_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
 	echo "done."
     else
 	echo ".railsondeb not found, aborting."
@@ -120,7 +121,7 @@ echo "* Download rbenv..."
 git clone https://github.com/sstephenson/rbenv.git .rbenv
 
 echo "* Install rbenv..."
-add_rbenv_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+add_rbenv_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 
