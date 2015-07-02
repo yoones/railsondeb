@@ -113,7 +113,7 @@ if [ -f ".railsondeb" ]; then
 fi
 
 echo "* Install dependencies (sudo required)..."
-sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev  libmagickcore-dev libmagickwand-dev imagemagick nodejs
+sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev libmagickcore-dev libmagickwand-dev imagemagick nodejs libffi-dev
 
 touch .railsondeb
 
