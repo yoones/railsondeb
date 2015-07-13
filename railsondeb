@@ -6,6 +6,7 @@
 # Description	: Install rbenv, ruby and rails on a debian-based distribution
 
 # Changelog
+# 2.6	: Enabled zshrc usage, added libffi-dev for Linux Mint compatibility
 # 2.5	: ruby 2.2.2. Disabled zshrc and tcshrc usage.
 # 2.4	: Removed tcsh rc file (unstable), moved to ruby 2.2.0, added nodejs dependency.
 # 2.3	: Uses bash, zsh and tcsh rc files if they exists, and cli options added.
@@ -53,10 +54,10 @@ function add_ruby_version_to_rc_file()
 
 function print_help()
 {
-    echo "Usage: ./railsondeb [-h|-v|--reset-rc]"
-    echo -e "\t-h\t\t: print this help message"
-    echo -e "\t-v\t\t: print railsondeb version"
-    echo -e "\t--reset-rc\t: reset instructions put into bash, zsh and tcsh rc files"
+    echo "Usage: ./railsondeb [-h|--help|-v|--version|--reset-rc]"
+    echo -e "\t-h, --help\t\t: print this help message"
+    echo -e "\t-v, --version\t\t: print railsondeb version"
+    echo -e "\t--reset-rc\t\t: reset instructions put into bash, zsh and tcsh rc files"
     echo ""
     echo "You can get the latest version at https://github.com/yoones/railsondeb"
 }
@@ -66,9 +67,9 @@ function reset_rc()
     pushd ~ > /dev/null
     echo "* Reset rc files..."
     if [ -f ".railsondeb" ]; then
-	clean_rc_file ".bashrc" # ".zshrc" ".tcshrc"
-	add_rbenv_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
-	add_ruby_version_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
+	clean_rc_file ".bashrc" ".zshrc"
+	add_rbenv_to_rc_file ".bashrc" ".zshrc"
+	add_ruby_version_to_rc_file ".bashrc" ".zshrc"
 	echo "done."
     else
 	echo ".railsondeb not found, aborting."
@@ -79,9 +80,9 @@ function reset_rc()
 
 # Manage given options if any
 if [ "$#" == "1" ]; then
-    if [ "$1" == "-h" ]; then
+    if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
 	print_help
-    elif [ "$1" == "-v" ]; then
+    elif [ "$1" == "-v" ] || [ "$1" == "--version" ]; then
 	echo $rod_version
     elif [ "$1" == "--reset-rc" ]; then
 	reset_rc
@@ -108,8 +109,17 @@ if [ -f ".railsondeb" ]; then
     fi
     rm -rf .rbenv
     rm -f .gemrc
-    clean_rc_file ".bashrc" ".zshrc" ".tcshrc"
+    clean_rc_file ".bashrc" ".zshrc"
     rm -f .railsondeb
+fi
+
+ruby --version 2>/dev/null
+if [ "$?" == "0" ]; then
+    echo "Error: It seems you already have ruby installed:"
+    ruby --version
+    echo "Please uninstall it (probably using 'apt-get remove') before using railsondeb."
+    echo "** railsondeb: abort **"
+    exit 1
 fi
 
 echo "* Install dependencies (sudo required)..."
@@ -121,7 +131,7 @@ echo "* Download rbenv..."
 git clone https://github.com/sstephenson/rbenv.git .rbenv
 
 echo "* Install rbenv..."
-add_rbenv_to_rc_file ".bashrc" # ".zshrc" ".tcshrc"
+add_rbenv_to_rc_file ".bashrc" ".zshrc"
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 
@@ -148,7 +158,7 @@ if [ "$?" != "0" ]; then
 fi
 pushd ~/ > /dev/null
 rbenv rehash
-add_ruby_version_to_rc_file ".bashrc" ".zshrc" ".tcshrc"
+add_ruby_version_to_rc_file ".bashrc" ".zshrc"
 export RBENV_VERSION="$ruby_version"
 
 echo "gem: --no-document" >> .gemrc
