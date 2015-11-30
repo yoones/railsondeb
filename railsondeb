@@ -1,23 +1,13 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 2.5
+# Version	: 2.6
 # Author	: Younes SERRAJ
 # Description	: Install rbenv, ruby and rails on a debian-based distribution
 
-# Changelog
-# 2.6	: Enabled zshrc usage, added libffi-dev for Linux Mint compatibility
-# 2.5	: ruby 2.2.2. Disabled zshrc and tcshrc usage.
-# 2.4	: Removed tcsh rc file (unstable), moved to ruby 2.2.0, added nodejs dependency.
-# 2.3	: Uses bash, zsh and tcsh rc files if they exists, and cli options added.
-# 2.2	: Move to ruby 2.1.1, and skip gems doc while installing them
-# 2.1	: Works on both debian and ubuntu (use .profile for debian, .bash_profile for ubuntu)
-# 2.0	: Initial release on github using rbenv
-# 1.0	: Old version using rvm
-
-rod_version="railsondeb 2.5"
+rod_version="railsondeb 2.6"
 magictag="#railsondeb"
-ruby_version="2.2.2"
+ruby_version="2.2.3"
 
 function clean_rc_file()
 {
@@ -143,6 +133,15 @@ popd > /dev/null
 if [ "$ruby_version" == "2.1.1" ]; then
     patch_file="ruby-2.1.1.patch"
     echo "Patching ruby $ruby_version using a cached version of https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt"
+    if [ -f "$patch_file" ]; then
+	cat $patch_file | rbenv install --patch "$ruby_version"
+    else
+	echo "Error: $patch_file not found."
+	exit 1
+    fi
+elif [ "$ruby_version" == "2.2.3" ]; then
+    patch_file="ruby-2.2.3-OpenSSLv3.patch"
+    echo "Patching ruby $ruby_version using a cached version of https://gist.github.com/mislav/055441129184a1512bb5.txt"
     if [ -f "$patch_file" ]; then
 	cat $patch_file | rbenv install --patch "$ruby_version"
     else
