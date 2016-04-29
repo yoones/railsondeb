@@ -57,7 +57,7 @@ function set_rc()
 
 function uninstall()
 {
-    rm -f ~/.rbenv
+    rm -rf ~/.rbenv
     rm -f ~/.gemrc
     rm -f ~/.railsondeb
     clean_rc ".bashrc"
