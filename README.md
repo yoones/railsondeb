@@ -3,6 +3,7 @@ railsondeb
 
 Install rbenv, ruby, bundler and rails on debian.
 
+```
 Usage: railsondeb <command> [<args>]
 
 Some useful railsondeb commands are:
@@ -16,3 +17,4 @@ Some useful railsondeb commands are:
    clean-rc    Remove rbenv-related commands from your ~/.bashrc file
 
 You can get the latest version at https://github.com/yoones/railsondeb
+```
