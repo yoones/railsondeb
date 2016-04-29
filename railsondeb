@@ -1,15 +1,33 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 2.6
+# Version	: 3.0
 # Author	: Younes SERRAJ
-# Description	: Install rbenv, ruby and rails on a debian-based distribution
+# Description	: Install rbenv, ruby and rails on a debian
 
-rod_version="railsondeb 2.6"
+version="3.0"
 magictag="#railsondeb"
-ruby_version="2.2.3"
 
-function clean_rc_file()
+function usage()
+{
+    cat <<EOF
+Usage: railsondeb <command> [<args>]
+
+Some useful railsondeb commands are:
+   help        Display this information
+   version     Display railsondeb version
+   install     Install rbenv, the specified version of ruby and rails
+	       If not specified, last stable version of ruby is selected
+   uninstall   Uninstall rbenv, ruby and rails
+   update      Update rbenv, ruby and rails
+   set-rc      Add rbenv-related commands to your ~/.bashrc file
+   clean-rc    Remove rbenv-related commands from your ~/.bashrc file
+
+You can get the latest version at https://github.com/yoones/railsondeb
+EOF
+}
+
+function clean_rc()
 {
     for rcfile in "$@"
     do
@@ -21,155 +39,174 @@ function clean_rc_file()
     done
 }
 
-function add_rbenv_to_rc_file()
+function set_rc()
 {
+    clean_rc ".bashrc"
+
+    ruby_version="$1"
+    shift
     for rcfile in "$@"
     do
 	if [ -f $rcfile ]; then
 	    echo "export PATH=\"\$HOME/.rbenv/bin:\$PATH\" $magictag" >> $rcfile
 	    echo "eval \"\$(rbenv init -)\" $magictag" >> $rcfile
-	fi
-    done
-}
-
-function add_ruby_version_to_rc_file()
-{
-    for rcfile in "$@"
-    do
-	if [ -f $rcfile ]; then
 	    echo "export RBENV_VERSION=\"$ruby_version\" $magictag" >> $rcfile
 	fi
     done
 }
 
-function print_help()
+function uninstall()
 {
-    echo "Usage: ./railsondeb [-h|--help|-v|--version|--reset-rc]"
-    echo -e "\t-h, --help\t\t: print this help message"
-    echo -e "\t-v, --version\t\t: print railsondeb version"
-    echo -e "\t--reset-rc\t\t: reset instructions put into bash, zsh and tcsh rc files"
-    echo ""
-    echo "You can get the latest version at https://github.com/yoones/railsondeb"
+    rm -f ~/.rbenv
+    rm -f ~/.gemrc
+    rm -f ~/.railsondeb
+    clean_rc ".bashrc"
 }
 
-function reset_rc()
+function install_rbenv()
 {
-    pushd ~ > /dev/null
-    echo "* Reset rc files..."
+    echo "* Check for existing install of railsondeb..."
+
+    # Check for existing install of railsondeb
     if [ -f ".railsondeb" ]; then
-	clean_rc_file ".bashrc" ".zshrc"
-	add_rbenv_to_rc_file ".bashrc" ".zshrc"
-	add_ruby_version_to_rc_file ".bashrc" ".zshrc"
-	echo "done."
-    else
-	echo ".railsondeb not found, aborting."
+	echo "  railsondeb seems to exist already."
+	read -p "  Delete current install (y/n)? " choice
+	if [ "$choice" != "y" ]; then
+	    echo "Installation aborted."
+	    popd > /dev/null
+	    exit 1
+	fi
+    fi
+    uninstall
+
+    # Install rbenv
+
+    echo "* Install dependencies (sudo required)..."
+    sudo apt-get install -y -f build-essential openssl libreadline6 \
+	 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g \
+	 zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 \
+	 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev \
+	 automake libtool bison pkg-config libpq-dev libmysqlclient-dev \
+	 libmagickcore-dev libmagickwand-dev imagemagick nodejs libffi-dev
+
+    touch .railsondeb
+
+    echo "* Download rbenv..."
+    git clone https://github.com/sstephenson/rbenv.git .rbenv
+
+    echo "* Install rbenv..."
+    export PATH="$HOME/.rbenv/bin:$PATH"
+    eval "$(rbenv init -)"
+}
+
+function install_ruby_build()
+{
+    echo "* Download ruby-build..."
+    git clone https://github.com/sstephenson/ruby-build.git \
+	.rbenv/plugins/ruby-build
+}
+
+
+function get_latest_stable_ruby_version()
+{
+    rbenv install -l | tr -d ' ' | grep -G "^[0-9].*" | \
+	grep -v -e -preview -e -rc -e -dev | tail -n 1 | tr -d '\n'
+}
+
+function install_ruby()
+{
+    ruby_version="$1"
+    if [ "$ruby_version" == "" ]; then
+	ruby_version=`get_latest_stable_ruby_version`
+    fi
+
+    echo "* Install ruby $ruby_version..."
+    rbenv install $ruby_version
+    if [ "$?" != "0" ]; then
+	echo "Error: failed to install ruby $ruby_version"
+	uninstall
+	popd > /dev/null
 	exit 1
+    fi
+    set_rc "$ruby_version" ".bashrc"
+    export RBENV_VERSION="$ruby_version"
+}
+
+function install_rails()
+{
+    echo "gem: --no-ri --no-rdoc" >> ~/.gemrc
+
+    echo "* Install bundler..."
+    gem install bundler
+
+    echo "* Install rails..."
+    gem install rails
+
+    rbenv rehash
+}
+
+function update_rbenv()
+{
+    pushd . > /dev/null
+    cd ~/.rbenv
+    git pull
+    rbenv rehash
+    popd > /dev/null
+}
+
+function update_ruby()
+{
+    pushd . > /dev/null
+    cd ~/.rbenv/plugins/ruby-build
+    git pull
+    rbenv rehash
+    last_stable_version=`get_latest_stable_ruby_version`
+    if [ "$RBENV_VERSION" != "$last_stable_version" ]; then
+	install_ruby "$last_stable_version"
     fi
     popd > /dev/null
 }
 
-# Manage given options if any
-if [ "$#" == "1" ]; then
-    if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
-	print_help
-    elif [ "$1" == "-v" ] || [ "$1" == "--version" ]; then
-	echo $rod_version
-    elif [ "$1" == "--reset-rc" ]; then
-	reset_rc
-    else
-	echo "Error: unknown option"
+function update_rails()
+{
+    gem update rails
+}
+
+## ============
+## ==  MAIN  ==
+## ============
+
+pushd ~ > /dev/null
+if [ "$#" == "0" ] || [ "$1" == "help" ]; then
+    usage
+elif [ "$1" == "version" ]; then
+    echo "railsondeb $version"
+elif [ "$1" == "install" ]; then
+    install_rbenv
+    install_ruby_build
+    install_ruby "$2"
+    install_rails
+    echo "You can now reload your shell rc file :)"
+elif [ "$1" == "uninstall" ]; then
+    uninstall
+elif [ "$1" == "update" ]; then
+    update_rbenv
+    update_ruby
+    update_rails
+elif [ "$1" == "set-rc" ]; then
+    if [ "$RBENV_VERSION" == "" ]; then
+	echo "Error: RBENV_VERSION required"
+	popd > /dev/null
 	exit 1
     fi
-    exit 0
-elif [ "$#" != "0" ]; then
-    echo "Error: too many options."
-    exit 1
-fi
-
-# No argument given, start install
-echo "** railsondeb: start **"
-pushd ~/ > /dev/null
-
-if [ -f ".railsondeb" ]; then
-    echo "* railsondeb seems to exist already."
-    read -p "! Delete current install (y/n)?" choice
-    if [ "$choice" != "y" ]; then
-	echo "** railsondeb: abort **"
-	exit 1
-    fi
-    rm -rf .rbenv
-    rm -f .gemrc
-    clean_rc_file ".bashrc" ".zshrc"
-    rm -f .railsondeb
-fi
-
-ruby --version 2>/dev/null
-if [ "$?" == "0" ]; then
-    echo "Error: It seems you already have ruby installed:"
-    ruby --version
-    echo "Please uninstall it (probably using 'apt-get remove') before using railsondeb."
-    echo "** railsondeb: abort **"
-    exit 1
-fi
-
-echo "* Install dependencies (sudo required)..."
-sudo apt-get install -y -f build-essential openssl libreadline6 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison pkg-config libpq-dev libmysqlclient-dev libmagickcore-dev libmagickwand-dev imagemagick nodejs libffi-dev
-
-touch .railsondeb
-
-echo "* Download rbenv..."
-git clone https://github.com/sstephenson/rbenv.git .rbenv
-
-echo "* Install rbenv..."
-add_rbenv_to_rc_file ".bashrc" ".zshrc"
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
-
-echo "* Download ruby-build..."
-git clone https://github.com/sstephenson/ruby-build.git .rbenv/plugins/ruby-build
-
-echo "* Install ruby $ruby_version..."
-popd > /dev/null
-if [ "$ruby_version" == "2.1.1" ]; then
-    patch_file="ruby-2.1.1.patch"
-    echo "Patching ruby $ruby_version using a cached version of https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt"
-    if [ -f "$patch_file" ]; then
-	cat $patch_file | rbenv install --patch "$ruby_version"
-    else
-	echo "Error: $patch_file not found."
-	exit 1
-    fi
-elif [ "$ruby_version" == "2.2.3" ]; then
-    patch_file="ruby-2.2.3-OpenSSLv3.patch"
-    echo "Patching ruby $ruby_version using a cached version of https://gist.github.com/mislav/055441129184a1512bb5.txt"
-    if [ -f "$patch_file" ]; then
-	cat $patch_file | rbenv install --patch "$ruby_version"
-    else
-	echo "Error: $patch_file not found."
-	exit 1
-    fi
+    set_rc "$RBENV_VERSION" ".bashrc"
+elif [ "$1" == "clean-rc" ]; then
+    clean_rc
 else
-    rbenv install $ruby_version
-fi
-if [ "$?" != "0" ]; then
-    echo "Error: failed to install ruby $ruby_version"
+    usage
+    popd > /dev/null
     exit 1
 fi
-pushd ~/ > /dev/null
-rbenv rehash
-add_ruby_version_to_rc_file ".bashrc" ".zshrc"
-export RBENV_VERSION="$ruby_version"
-
-echo "gem: --no-document" >> .gemrc
-
-echo "* Install bundler..."
-gem install bundler
-
-echo "* Install rails..."
-gem install rails
-
-rbenv rehash
-
 popd > /dev/null
-echo "** railsondeb: done. **"
-echo "You can now reload your shell rc file :)"
+
+exit 0
