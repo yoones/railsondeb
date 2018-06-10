@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # Name		: railsondeb
-# Version	: 3.0
+# Version	: 3.1
 # Author	: Younes SERRAJ
 # Description	: Install rbenv, ruby and rails on a debian
 
-version="3.0"
+set -e
+
+version="3.1"
 magictag="#railsondeb"
 
 function usage()
@@ -82,11 +84,11 @@ function install_rbenv()
     # Install rbenv
 
     echo "* Install dependencies (sudo required)..."
-    sudo apt-get install -y -f build-essential openssl libreadline6 \
-	 libreadline6-dev curl libcurl4-openssl-dev git-core zlib1g \
+    sudo apt-get install -y -f build-essential openssl libreadline7 \
+	 libreadline-dev curl libcurl4-openssl-dev git-core zlib1g \
 	 zlib1g-dev libssl-dev libyaml-dev libsqlite3-dev sqlite3 \
 	 libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev \
-	 automake libtool bison pkg-config libpq-dev libmysqlclient-dev \
+	 automake libtool bison pkg-config libpq-dev default-libmysqlclient-dev \
 	 libmagickcore-dev libmagickwand-dev imagemagick nodejs libffi-dev
 
     touch .railsondeb
@@ -149,6 +151,8 @@ function update_rbenv()
 {
     pushd . > /dev/null
     cd ~/.rbenv
+    git pull
+    cd plugins/ruby-build/
     git pull
     rbenv rehash
     popd > /dev/null
